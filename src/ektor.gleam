@@ -52,8 +52,6 @@ fn initialize_ektor(state, handler: Handler(state)) {
   loop(state, handler)
 }
 
-pub type State(state)
-
 @external(erlang, "ektor_ffi", "receive_forever_with_handler")
 fn receive_forever_with_handler(state: state, handler: Handler(state)) -> state
 
