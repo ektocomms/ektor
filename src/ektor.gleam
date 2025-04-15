@@ -3,8 +3,6 @@ import gleam/erlang/process.{type Pid}
 
 type DoNotLeak
 
-pub type Message(msg)
-
 pub type HandlerMap(state)
 
 pub type Inbox(msg) {
