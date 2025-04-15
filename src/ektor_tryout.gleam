@@ -45,12 +45,12 @@ pub fn main() {
     |> ektor.handling(inbox_a, handler_a)
     |> ektor.handling(inbox_b, handler_b)
     |> ektor.handling(inbox_c, handler_c)
-  let ekt = ektor.start(State(a: 0, b: 0, c: 0), handler)
-  ektor.send(ekt, inbox_a, A(1))
-  ektor.send(ekt, inbox_b, B(2))
-  let pid = process.self()
+  let ekt_pid = ektor.start(State(a: 0, b: 0, c: 0), handler)
+  ektor.send(ekt_pid, inbox_a, A(1))
+  ektor.send(ekt_pid, inbox_b, B(2))
+  let my_pid = process.self()
   let inbox = ektor.new_inbox()
-  ektor.send(ekt, inbox_c, C(3, #(pid, inbox)))
+  ektor.send(ekt_pid, inbox_c, C(3, #(my_pid, inbox)))
   let msg = ektor.receive(inbox, within: 200)
   echo msg
 }
