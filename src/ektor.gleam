@@ -38,11 +38,10 @@ pub fn insert_handler(
 
 pub fn handling(
   handler: Handler(state),
+  inbox: Inbox(msg),
   handler_fn: fn(msg, state) -> state,
-) -> #(Inbox(msg), Handler(state)) {
-  let inbox = Inbox(erlang.make_reference())
-  let handler = handler |> insert_handler(inbox, handler_fn)
-  #(inbox, handler)
+) -> Handler(state) {
+  handler |> insert_handler(inbox, handler_fn)
 }
 
 pub fn start(state: state, handler: Handler(state)) {

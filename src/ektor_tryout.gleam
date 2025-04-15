@@ -37,10 +37,14 @@ fn handler_c(msg: C, state: State) {
 }
 
 pub fn main() {
-  let handler = ektor.new_handler()
-  let #(inbox_a, handler) = ektor.handling(handler, handler_a)
-  let #(inbox_b, handler) = ektor.handling(handler, handler_b)
-  let #(inbox_c, handler) = ektor.handling(handler, handler_c)
+  let inbox_a = ektor.new_inbox()
+  let inbox_b = ektor.new_inbox()
+  let inbox_c = ektor.new_inbox()
+  let handler =
+    ektor.new_handler()
+    |> ektor.handling(inbox_a, handler_a)
+    |> ektor.handling(inbox_b, handler_b)
+    |> ektor.handling(inbox_c, handler_c)
   let ekt = ektor.start(State(a: 0, b: 0, c: 0), handler)
   ektor.send(ekt, inbox_a, A(1))
   ektor.send(ekt, inbox_b, B(2))
