@@ -1,15 +1,14 @@
 import ektor.{type Inbox}
 import gleam/erlang/process.{type Pid}
 import gleam/int
-import gleeunit
 import gleeunit/should
 
-pub fn main() {
-  gleeunit.main()
+pub type State {
+  State(a: Int, b: Int)
 }
 
 type A {
-  A(a: Int)
+  A(a: Int, reply_to: #(Pid, Inbox(Msg)))
 }
 
 type B {
@@ -18,14 +17,7 @@ type B {
 
 type Msg {
   Msg(msg: String)
-}
-
-pub type State {
-  State(a: Int, b: Int)
-}
-
-fn handler_a(msg: A, state: State) {
-  ektor.continue(State(..state, a: msg.a))
+  InboxMsg(inbox: Inbox(B))
 }
 
 fn handler_b(msg: B, state: State) {
@@ -38,18 +30,32 @@ fn handler_b(msg: B, state: State) {
   ektor.continue(State(..state, b: msg.b))
 }
 
-pub fn ektor_basic_usage_test() {
-  let inbox_a = ektor.new_inbox()
+fn handler_a(msg: A, state: State) {
+  let #(pid, inbox) = msg.reply_to
   let inbox_b = ektor.new_inbox()
+  ektor.send(pid, inbox, InboxMsg(inbox: inbox_b))
+
+  let new_handler =
+    ektor.new_handler_map()
+    |> ektor.handling(inbox_b, handler_b)
+  ektor.continue(State(..state, a: msg.a))
+  |> ektor.with_handler_map(new_handler)
+}
+
+pub fn ektor_continue_with_new_handler_test() {
+  let inbox_a = ektor.new_inbox()
   let handlers =
     ektor.new_handler_map()
     |> ektor.handling(inbox_a, handler_a)
-    |> ektor.handling(inbox_b, handler_b)
   let ekt_pid = ektor.start(State(a: 0, b: 0), handlers)
-  ektor.send(ekt_pid, inbox_a, A(1))
   let my_pid = process.self()
   let inbox = ektor.new_inbox()
-  ektor.send(ekt_pid, inbox_b, B(2, #(my_pid, inbox)))
+  ektor.send(ekt_pid, inbox_a, A(1, #(my_pid, inbox)))
+  let msg = ektor.receive(inbox, within: 200)
+  msg
+  |> should.be_ok
+  let assert Ok(InboxMsg(inbox_b)) = msg
+  ektor.send(ekt_pid, inbox_b, B(2, reply_to: #(my_pid, inbox)))
   let msg = ektor.receive(inbox, within: 200)
   msg
   |> should.equal(Ok(Msg("Received 2 at B inbox")))
