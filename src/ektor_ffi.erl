@@ -1,11 +1,13 @@
 -module(ektor_ffi).
--export([
-    new_handler_map/0, 'receive'/2, insert_handler/3, receive_forever_with_handlers/2
-]).
 
+-export([new_handler_map/0, 'receive'/2, insert_handler/3,
+         receive_forever_with_handlers/2, merge_handler_maps/2]).
 
 new_handler_map() ->
     {handler_map, #{}}.
+
+merge_handler_maps({handler_map, HandlersA}, {handler_map, HandlersB}) ->
+    {handler_map, maps:merge(HandlersA, HandlersB)}.
 
 insert_handler({handler_map, HandlerFns}, {inbox, Ref}, Fn) ->
     {handler_map, HandlerFns#{Ref => Fn}}.
@@ -19,8 +21,8 @@ insert_handler({handler_map, HandlerFns}, {inbox, Ref}, Fn) ->
     end.
 
 receive_forever_with_handlers(State, HandlerMap) ->
-    {ok, NewState} = receive_with_handlers(State, HandlerMap, infinity),
-    NewState.
+    {ok, Next} = receive_with_handlers(State, HandlerMap, infinity),
+    Next.
 
 receive_with_handlers(State, {handler_map, HandlerMap}, Timeout) ->
     receive
@@ -34,8 +36,8 @@ receive_with_handlers(State, {handler_map, HandlerMap}, Timeout) ->
         Msg when is_map_key(element(1, Msg), HandlerMap) ->
             Fn = maps:get(element(1, Msg), HandlerMap),
             {ok, Fn(element(2, Msg), State)}
-        % Msg when AnythingHandler =/= undefined ->
-        %     {ok, AnythingHandler(Msg)}
+    % Msg when AnythingHandler =/= undefined ->
+    %     {ok, AnythingHandler(Msg)}
     after Timeout ->
         {error, nil}
     end.

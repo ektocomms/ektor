@@ -1,5 +1,6 @@
 import gleam/erlang.{type Reference}
-import gleam/erlang/process.{type Pid}
+import gleam/erlang/process.{type ExitReason, type Pid}
+import gleam/option.{type Option}
 
 type DoNotLeak
 
@@ -7,6 +8,25 @@ pub type HandlerMap(state)
 
 pub type Inbox(msg) {
   Inbox(ref: Reference)
+}
+
+pub type Next(state) {
+  Continue(state: state, handler_map: Option(HandlerMap(state)))
+  Stop(ExitReason)
+}
+
+pub fn continue(state: state) -> Next(state) {
+  Continue(state, option.None)
+}
+
+pub fn with_handler_map(
+  next: Next(state),
+  handler_map: HandlerMap(state),
+) -> Next(state) {
+  case next {
+    Continue(state, _) -> Continue(state, option.Some(handler_map))
+    _ -> next
+  }
 }
 
 pub fn new_inbox() {
@@ -31,13 +51,13 @@ pub fn new_handler_map() -> HandlerMap(state)
 pub fn insert_handler(
   handler: HandlerMap(state),
   inbox: Inbox(msg),
-  handler_fn: fn(msg, state) -> state,
+  handler_fn: fn(msg, state) -> Next(state),
 ) -> HandlerMap(state)
 
 pub fn handling(
   handler: HandlerMap(state),
   inbox: Inbox(msg),
-  handler_fn: fn(msg, state) -> state,
+  handler_fn: fn(msg, state) -> Next(state),
 ) -> HandlerMap(state) {
   handler |> insert_handler(inbox, handler_fn)
 }
@@ -54,9 +74,28 @@ fn initialize_ektor(state, handler: HandlerMap(state)) {
 fn receive_forever_with_handlers(
   state: state,
   handler: HandlerMap(state),
-) -> state
+) -> Next(state)
 
-fn loop(state, handlers: HandlerMap(state)) {
-  let new_state = receive_forever_with_handlers(state, handlers)
-  loop(new_state, handlers)
+@external(erlang, "ektor_ffi", "merge_handler_maps")
+fn merge_handler_maps(
+  a: HandlerMap(state),
+  b: HandlerMap(state),
+) -> HandlerMap(state)
+
+fn loop(state, handlers: HandlerMap(state)) -> ExitReason {
+  let next = receive_forever_with_handlers(state, handlers)
+  case next {
+    Stop(reason) -> reason
+    Continue(new_state, new_handlers) -> {
+      case new_handlers {
+        option.Some(new_handlers) -> {
+          let new_handlers = merge_handler_maps(handlers, new_handlers)
+          loop(new_state, new_handlers)
+        }
+        option.None -> {
+          loop(new_state, handlers)
+        }
+      }
+    }
+  }
 }
