@@ -95,10 +95,9 @@ pub fn ektor_continue_with_new_handler_test() {
   let msg = ektor.receive(inbox, within: 200)
   msg
   |> should.be_ok
-  Nil
-  // let assert Ok(RespWithInbox(inbox_c)) = msg
-  // ektor.send(ekt_pid, inbox_c, C(c: 3, reply_to: #(my_pid, inbox)))
-  // let msg = ektor.receive(inbox, within: 200)
-  // msg
-  // |> should.equal(Ok(Resp("Received 3 at C inbox")))
+  let assert Ok(RespWithInbox(inbox_c)) = msg
+  ektor.send(ekt_pid, inbox_c, C(c: 3, reply_to: #(my_pid, inbox)))
+  let msg = ektor.receive(inbox, within: 200)
+  msg
+  |> should.equal(Ok(Resp("Received 3 at C inbox")))
 }
