@@ -1,3 +1,4 @@
+import gleam/dynamic.{type Dynamic}
 import gleam/erlang.{type Reference}
 import gleam/erlang/process.{type ExitReason, type Pid}
 import gleam/option.{type Option}
@@ -49,17 +50,30 @@ pub fn new_handler_map() -> HandlerMap(state)
 
 @external(erlang, "ektor_ffi", "insert_handler")
 pub fn insert_handler(
-  handler: HandlerMap(state),
+  handlers: HandlerMap(state),
   inbox: Inbox(msg),
-  handler_fn: fn(msg, state) -> Next(state),
+  handler: fn(msg, state) -> Next(state),
 ) -> HandlerMap(state)
 
-pub fn handling(
-  handler: HandlerMap(state),
-  inbox: Inbox(msg),
-  handler_fn: fn(msg, state) -> Next(state),
+@external(erlang, "ektor_ffi", "insert_anything_handler")
+pub fn insert_anything_handler(
+  handlers: HandlerMap(state),
+  handler: fn(Dynamic, state) -> Next(state),
+) -> HandlerMap(state)
+
+pub fn handling_anything(
+  handlers: HandlerMap(state),
+  handler: fn(Dynamic, state) -> Next(state),
 ) -> HandlerMap(state) {
-  handler |> insert_handler(inbox, handler_fn)
+  insert_anything_handler(handlers, handler)
+}
+
+pub fn handling(
+  handlers: HandlerMap(state),
+  inbox: Inbox(msg),
+  handler: fn(msg, state) -> Next(state),
+) -> HandlerMap(state) {
+  handlers |> insert_handler(inbox, handler)
 }
 
 pub fn start(state: state, handler: HandlerMap(state)) {
