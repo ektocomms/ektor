@@ -3,6 +3,8 @@
 [![Package Version](https://img.shields.io/hexpm/v/ektor)](https://hex.pm/packages/ektor)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/ektor/)
 
+Typed Messages between actors handling multiple types with less code.
+
 ```sh
 gleam add ektor@1
 ```
@@ -60,7 +62,26 @@ pub fn main() {
 }
 ```
 
-Further documentation can be found at <https://hexdocs.pm/ektor>.
+Handling messages of different types in a single actor is usefull to achieve separation of concerns. An actor may receive messages from a Supervisor and from other actors, and the expected interaction with each of them can be modeled using a different message type for each other. A supervisor would then provide a subject owned by actor A to an actor B, and the type of that subject would represent the kind of messages actor B is expected to send to actor A.
+
+The actor implementation on `gleam_otp` library let us handle messages of different types in a single actor by using a `Selector`. A selector is a mapping of `Subjects` to functions that transform messages from each Subject type to messages of the unique Selector type. A single `message_handler` function will then instruct the actor on how to handle messages from this unified type.
+
+This approach has some drawbacks:
+- It requires you to declare a selector and to add a mapping function for each different message type.
+- It requires you to declare a constructor for each message type on the unified type.
+- As subjects have to be created on the actor's process (when the new `Pid` is available), you can only get to know the individual subjects through message passing. So you need to declare and handle message constructors for this purpose.
+
+Soon or later you would find your self spending more time and line of codes to achieve this necessary plumbing than in your actual logic.
+
+With ektor we wanted to overcome this situation by enabling multi-type message handling with minimal plumbing code.
+
+Instead of `Subject(type)`, we use `Inbox(type)` which is not tied to a process `Pid` an so can be instantiated at the supervisor before spawning the child process.
+Instead of a function to handle messages of a single type, in companion with a selector which maps multi-type messages to that single message type, we use a map of inboxes to handler functions called `HandlerMap(state)`. Each of these functions will instruct the actor (ektor) on how to process a message on that inbox to produce the next state.
+
+Basic features have been implemented so far following the original implementation at `gleam_erlang/process` and `gleam_otp/actor`:
+  - Sending and receiving typed messages to and from inboxes.
+  - Adding handlers to a `HandlerMap`, even dinamically.
+  - Adding an anything/default handler with `handling_anything()`
 
 ## Development
 
