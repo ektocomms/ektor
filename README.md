@@ -59,7 +59,7 @@ pub fn main() {
 }
 ```
 
-Handling messages of different types in a single actor is usefull to achieve separation of concerns. An actor may receive messages from a Supervisor and from other actors, and the expected interaction with each of them can be modeled using a different message type for each other. A supervisor would then provide a reference -let's say a subject owned by actor A- to an actor B, and the type of that subject would represent the kind of messages actor B is expected to send to actor A.
+Handling messages of different types in a single actor is useful to achieve separation of concerns. An actor may receive messages from a Supervisor and from other actors, and the expected interaction with each of them can be modeled using a different message type for each other. A supervisor would then provide a reference -let's say a subject owned by actor A- to an actor B, and the type of that subject would represent the kind of messages actor B is expected to send to actor A.
 
 The actor implementation on `gleam_otp` library let us handle messages of different types in a single actor by using a `Selector`. A selector is a mapping of `Subject` instances to functions that transform messages from each Subject type to messages of the unique Selector type. A single `message_handler` function will then instruct the actor on how to handle messages from this unified type.
 
@@ -77,7 +77,7 @@ Instead of a function to handle messages of a single type, in companion with a s
 
 Basic features have been implemented so far following the original implementation at `gleam_erlang/process` and `gleam_otp/actor`:
   - Sending and receiving typed messages to and from inboxes.
-  - Adding handlers to a `HandlerMap`, even dinamically.
+  - Adding handlers to a `HandlerMap`, even dynamically.
   - Adding an anything/default handler with `handling_anything()`
   - Running an initial function  on spawned process with `start_spec()`
 
