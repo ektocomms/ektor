@@ -30,13 +30,6 @@ receive_forever_with_handlers(State, HandlerMap) ->
 receive_with_handlers(State, {handler_map, HandlerMap}, Timeout) ->
     AnythingHandler = maps:get(anything, HandlerMap, undefined),
     receive
-    % TODO: Review this adaptation
-    % Monitored process down messages.
-    % This is special cased so we can selectively receive based on the
-    % reference as well as the record tag.
-    % {'DOWN', Ref, process, Pid, Reason} when is_map_key(Ref, HandlerFns) ->
-    %     Fn = maps:get(Ref, HandlerFns),
-    %     {ok, Fn({process_down, Pid, Reason})};
         Msg when is_map_key(element(1, Msg), HandlerMap) ->
             Fn = maps:get(element(1, Msg), HandlerMap),
                 {ok, Fn(element(2, Msg), State)};
