@@ -11,6 +11,15 @@ pub type Inbox(msg) {
   Inbox(ref: Reference)
 }
 
+pub type InitResult(state) {
+  Ready(state: state, handler: HandlerMap(state))
+  Failed(String)
+}
+
+pub type Spec(state) {
+  Spec(init: fn() -> InitResult(state))
+}
+
 pub type Next(state) {
   Continue(state: state, handler_map: Option(HandlerMap(state)))
   Stop(ExitReason)
@@ -76,12 +85,24 @@ pub fn handling(
   handlers |> insert_handler(inbox, handler)
 }
 
-pub fn start(state: state, handler: HandlerMap(state)) {
-  process.start(fn() { initialize_ektor(state, handler) }, linked: True)
+pub fn start(state: state, handler: HandlerMap(state)) -> Pid {
+  start_spec(Spec(init: fn() { Ready(state, handler) }))
 }
 
-fn initialize_ektor(state, handler: HandlerMap(state)) {
-  loop(state, handler)
+pub fn start_spec(spec: Spec(state)) -> Pid {
+  process.start(fn() { initialize_ektor(spec) }, linked: True)
+}
+
+fn initialize_ektor(spec: Spec(state)) -> ExitReason {
+  let init_result = spec.init()
+  case init_result {
+    Ready(state, handlers) -> {
+      loop(state, handlers)
+    }
+    Failed(reason) -> {
+      process.Abnormal(reason)
+    }
+  }
 }
 
 @external(erlang, "ektor_ffi", "receive_forever_with_handlers")

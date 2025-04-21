@@ -79,6 +79,7 @@ Basic features have been implemented so far following the original implementatio
   - Sending and receiving typed messages to and from inboxes.
   - Adding handlers to a `HandlerMap`, even dinamically.
   - Adding an anything/default handler with `handling_anything()`
+  - Running an initial function  on spawned process with `start_spec()`
 
 ## Development
 
