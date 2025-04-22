@@ -1,7 +1,9 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang.{type Reference}
+import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process.{type ExitReason, type Pid}
 import gleam/option.{type Option}
+import gleam/string
 
 type DoNotLeak
 
@@ -117,7 +119,21 @@ fn merge_handler_maps(
   b: HandlerMap(state),
 ) -> HandlerMap(state)
 
+@external(erlang, "logger", "warning")
+fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
+
+fn default_handler(msg: Dynamic, state: state) -> Next(state) {
+  log_warning(charlist.from_string("Ektor discarding unexpected message: ~s"), [
+    charlist.from_string(string.inspect(msg)),
+  ])
+  continue(state)
+}
+
 fn loop(state, handlers: HandlerMap(state)) -> ExitReason {
+  let catchall_handler =
+    new_handler_map()
+    |> handling_anything(default_handler)
+  let handlers = merge_handler_maps(catchall_handler, handlers)
   let next = receive_forever_with_handlers(state, handlers)
   case next {
     Stop(reason) -> reason
