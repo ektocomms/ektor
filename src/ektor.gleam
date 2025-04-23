@@ -25,7 +25,7 @@ pub type Topic(msg) {
 }
 
 pub type InitResult(state) {
-  Ready(state: state, handler: TopicRouter(state))
+  Ready(state: state, router: TopicRouter(state))
   Failed(String)
 }
 
@@ -104,6 +104,18 @@ pub fn start(state: state, router: TopicRouter(state)) -> Pid {
 
 pub fn start_spec(spec: Spec(state)) -> Pid {
   process_start(fn() { initialize_ektor(spec) }, linked: True)
+}
+
+pub fn start_single(
+  state: state,
+  handler: fn(msg, state) -> Next(state),
+) -> #(Pid, Topic(msg)) {
+  let topic = new_topic()
+  let router =
+    new_topic_router()
+    |> handling(topic, handler)
+  let pid = start_spec(Spec(init: fn() { Ready(state, router) }))
+  #(pid, topic)
 }
 
 pub fn process_start(
