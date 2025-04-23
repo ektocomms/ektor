@@ -35,18 +35,18 @@ fn handler_a(msg: A, state: State) {
   ektor.send(pid, topic, TopicMsg(topic: topic_b))
 
   let new_handler =
-    ektor.new_topics_router()
+    ektor.new_topic_router()
     |> ektor.handling(topic_b, handler_b)
   ektor.continue(State(..state, a: msg.a))
-  |> ektor.with_handler_map(new_handler)
+  |> ektor.with_topic_router(new_handler)
 }
 
 pub fn ektor_continue_with_new_handler_test() {
   let topic_a = ektor.new_topic()
-  let topics_router =
-    ektor.new_topics_router()
+  let topic_router =
+    ektor.new_topic_router()
     |> ektor.handling(topic_a, handler_a)
-  let ekt_pid = ektor.start(State(a: 0, b: 0), topics_router)
+  let ekt_pid = ektor.start(State(a: 0, b: 0), topic_router)
   let my_pid = ektor.self()
   let topic = ektor.new_topic()
   ektor.send(ekt_pid, topic_a, A(1, #(my_pid, topic)))

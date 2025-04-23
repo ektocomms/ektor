@@ -44,11 +44,11 @@ fn handler_b(msg: B, state: State) {
 pub fn main() {
   let topic_a = ektor.new_topic()
   let topic_b = ektor.new_topic()
-  let topics_router =
-    ektor.new_topics_router()
+  let topic_router =
+    ektor.new_topic_router()
     |> ektor.handling(topic_a, handler_a)
     |> ektor.handling(topic_b, handler_b)
-  let ekt_pid = ektor.start(State(a: 0, b: 0), topics_router)
+  let ekt_pid = ektor.start(State(a: 0, b: 0), topic_router)
   ektor.send(ekt_pid, topic_a, A(1))
   let my_pid = ektor.self()
   let topic = ektor.new_topic()

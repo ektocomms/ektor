@@ -12,7 +12,7 @@ pub fn ektor_start_spec_test() {
     ektor.start_spec(
       ektor.Spec(init: fn() {
         ektor.send(my_pid, my_topic, Msg)
-        ektor.Ready(Nil, ektor.new_topics_router())
+        ektor.Ready(Nil, ektor.new_topic_router())
       }),
     )
   let msg = ektor.receive(my_topic, within: 200)

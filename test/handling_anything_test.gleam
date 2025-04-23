@@ -53,11 +53,11 @@ fn raw_send(a: Pid, b: message) -> DoNotLeak
 
 pub fn ektor_handling_anything_test() {
   let supervisor_msg_topic = ektor.new_topic()
-  let topics_router =
-    ektor.new_topics_router()
+  let topic_router =
+    ektor.new_topic_router()
     |> ektor.handling(supervisor_msg_topic, supervisor_msg_handler)
     |> ektor.handling_anything(anything_handler)
-  let ekt_pid = ektor.start(Initial, topics_router)
+  let ekt_pid = ektor.start(Initial, topic_router)
   let my_pid = ektor.self()
   let topic = ektor.new_topic()
   ektor.send(ekt_pid, supervisor_msg_topic, ReplyTo(#(my_pid, topic)))
