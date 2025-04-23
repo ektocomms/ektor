@@ -1,21 +1,21 @@
 -module(ektor_ffi).
 
--export([new_handler_map/0, 'receive'/2, insert_handler/3, insert_anything_handler/2,
-         receive_forever_with_handlers/2, merge_handler_maps/2]).
+-export([new_topics_router/0, 'receive'/2, insert_handler/3, insert_anything_handler/2,
+         receive_forever_with_router/2, merge_topic_routers/2]).
 
-new_handler_map() ->
-    {handler_map, #{}}.
+new_topics_router() ->
+    {topics_router, #{}}.
 
-merge_handler_maps({handler_map, HandlersA}, {handler_map, HandlersB}) ->
-    {handler_map, maps:merge(HandlersA, HandlersB)}.
+merge_topic_routers({topics_router, RouterA}, {topics_router, RouterB}) ->
+    {topics_router, maps:merge(RouterA, RouterB)}.
 
-insert_anything_handler({handler_map, HandlerFns}, Fn) ->
-    {handler_map, HandlerFns#{anything => Fn}}.
+insert_anything_handler({topics_router, HandlerFns}, Fn) ->
+    {topics_router, HandlerFns#{anything => Fn}}.
 
-insert_handler({handler_map, HandlerFns}, {inbox, Ref}, Fn) ->
-    {handler_map, HandlerFns#{Ref => Fn}}.
+insert_handler({topics_router, HandlerFns}, {topic, Ref}, Fn) ->
+    {topics_router, HandlerFns#{Ref => Fn}}.
 
-'receive'({inbox, Ref}, Timeout) ->
+'receive'({topic, Ref}, Timeout) ->
     receive
         {Ref, Message} ->
             {ok, Message}
@@ -23,15 +23,15 @@ insert_handler({handler_map, HandlerFns}, {inbox, Ref}, Fn) ->
         {error, nil}
     end.
 
-receive_forever_with_handlers(State, HandlerMap) ->
-    {ok, Next} = receive_with_handlers(State, HandlerMap, infinity),
+receive_forever_with_router(State, TopicRouter) ->
+    {ok, Next} = receive_with_router(State, TopicRouter, infinity),
     Next.
 
-receive_with_handlers(State, {handler_map, HandlerMap}, Timeout) ->
-    AnythingHandler = maps:get(anything, HandlerMap, undefined),
+receive_with_router(State, {topics_router, TopicRouter}, Timeout) ->
+    AnythingHandler = maps:get(anything, TopicRouter, undefined),
     receive
-        Msg when is_map_key(element(1, Msg), HandlerMap) ->
-            Fn = maps:get(element(1, Msg), HandlerMap),
+        Msg when is_map_key(element(1, Msg), TopicRouter) ->
+            Fn = maps:get(element(1, Msg), TopicRouter),
                 {ok, Fn(element(2, Msg), State)};
         Msg when AnythingHandler =/= undefined ->
             {ok, AnythingHandler(Msg, State)}

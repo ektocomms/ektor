@@ -7,7 +7,7 @@ Typed Messages between actors handling multiple types with less code.
 
 
 ```gleam
-import ektor.{type Inbox, type Pid}
+import ektor.{type Pid, type Topic}
 import gleam/int
 import gleam/io
 
@@ -16,7 +16,7 @@ type A {
 }
 
 type B {
-  B(b: Int, reply_to: #(Pid, Inbox(Msg)))
+  B(b: Int, reply_to: #(Pid, Topic(Msg)))
 }
 
 type Msg {
@@ -32,28 +32,28 @@ fn handler_a(msg: A, state: State) {
 }
 
 fn handler_b(msg: B, state: State) {
-  let #(pid, inbox) = msg.reply_to
+  let #(pid, topic) = msg.reply_to
   ektor.send(
     pid,
-    inbox,
-    Msg("Received " <> int.to_string(msg.b) <> " at B inbox"),
+    topic,
+    Msg("Received " <> int.to_string(msg.b) <> " at handler_b"),
   )
   ektor.continue(State(..state, b: msg.b))
 }
 
 pub fn main() {
-  let inbox_a = ektor.new_inbox()
-  let inbox_b = ektor.new_inbox()
-  let handlers =
-    ektor.new_handler_map()
-    |> ektor.handling(inbox_a, handler_a)
-    |> ektor.handling(inbox_b, handler_b)
-  let ekt_pid = ektor.start(State(a: 0, b: 0), handlers)
-  ektor.send(ekt_pid, inbox_a, A(1))
-  let my_pid = process.self()
-  let inbox = ektor.new_inbox()
-  ektor.send(ekt_pid, inbox_b, B(2, #(my_pid, inbox)))
-  let assert Ok(Msg(msg)) = ektor.receive(inbox, within: 200)
+  let topic_a = ektor.new_topic()
+  let topic_b = ektor.new_topic()
+  let topics_router =
+    ektor.new_topics_router()
+    |> ektor.handling(topic_a, handler_a)
+    |> ektor.handling(topic_b, handler_b)
+  let ekt_pid = ektor.start(State(a: 0, b: 0), topics_router)
+  ektor.send(ekt_pid, topic_a, A(1))
+  let my_pid = ektor.self()
+  let topic = ektor.new_topic()
+  ektor.send(ekt_pid, topic_b, B(2, #(my_pid, topic)))
+  let assert Ok(Msg(msg)) = ektor.receive(topic, within: 200)
   io.println(msg)
 }
 ```
@@ -71,12 +71,12 @@ Soon or later you would find your self spending more time and line of codes to a
 
 With ektor we wanted to overcome this situation by enabling multi-type message handling with minimal effort.
 
-Instead of `Subject(type)`, we use `Inbox(type)` which is not tied to a process `Pid` an so can be instantiated at the supervisor before spawning the child process.
-Instead of a function to handle messages of a single type, in companion with a selector which maps multi-type messages to that single message type, we use a map of inboxes to handling functions called `HandlerMap(state)`. Each of them will instruct the actor (ektor) on how to process a message on that inbox to produce the next state.
+Instead of `Subject(type)`, we use `Topic(type)` which is not tied to a process `Pid` an so can be instantiated at the supervisor before spawning the child process.
+Instead of a function to handle messages of a single type, in companion with a selector which maps multi-type messages to that single message type, we use a map of topics to handling functions called `TopicRouter(state)`. Each of them will instruct the actor (ektor) on how to process a message on that topic to produce the next state.
 
 Basic features have been implemented so far following the original implementation at `gleam_erlang/process` and `gleam_otp/actor`:
-  - Sending and receiving typed messages to and from inboxes.
-  - Adding handlers to a `HandlerMap`, even dynamically.
+  - Sending and receiving typed messages to and from topics.
+  - Adding handlers to a `TopicRouter`, even dynamically.
   - Adding an anything/default handler with `handling_anything()`
   - Running an initial function  on spawned process with `start_spec()`
 

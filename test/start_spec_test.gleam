@@ -7,15 +7,15 @@ type Msg {
 
 pub fn ektor_start_spec_test() {
   let my_pid = ektor.self()
-  let my_inbox = ektor.new_inbox()
+  let my_topic = ektor.new_topic()
   let _ekt_pid =
     ektor.start_spec(
       ektor.Spec(init: fn() {
-        ektor.send(my_pid, my_inbox, Msg)
-        ektor.Ready(Nil, ektor.new_handler_map())
+        ektor.send(my_pid, my_topic, Msg)
+        ektor.Ready(Nil, ektor.new_topics_router())
       }),
     )
-  let msg = ektor.receive(my_inbox, within: 200)
+  let msg = ektor.receive(my_topic, within: 200)
   msg
   |> should.equal(Ok(Msg))
 }

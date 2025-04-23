@@ -18,14 +18,14 @@ pub type ExitReason {
 
 type DoNotLeak
 
-pub type HandlerMap(state)
+pub type TopicRouter(state)
 
-pub type Inbox(msg) {
-  Inbox(ref: Reference)
+pub type Topic(msg) {
+  Topic(ref: Reference)
 }
 
 pub type InitResult(state) {
-  Ready(state: state, handler: HandlerMap(state))
+  Ready(state: state, handler: TopicRouter(state))
   Failed(String)
 }
 
@@ -34,7 +34,7 @@ pub type Spec(state) {
 }
 
 pub type Next(state) {
-  Continue(state: state, handler_map: Option(HandlerMap(state)))
+  Continue(state: state, handler_map: Option(TopicRouter(state)))
   Stop(ExitReason)
 }
 
@@ -44,7 +44,7 @@ pub fn continue(state: state) -> Next(state) {
 
 pub fn with_handler_map(
   next: Next(state),
-  handler_map: HandlerMap(state),
+  handler_map: TopicRouter(state),
 ) -> Next(state) {
   case next {
     Continue(state, _) -> Continue(state, option.Some(handler_map))
@@ -52,54 +52,54 @@ pub fn with_handler_map(
   }
 }
 
-pub fn new_inbox() {
-  Inbox(ref: erlang.make_reference())
+pub fn new_topic() {
+  Topic(ref: erlang.make_reference())
 }
 
 @external(erlang, "erlang", "send")
 fn raw_send(a: Pid, b: message) -> DoNotLeak
 
-pub fn send(pid: Pid, inbox: Inbox(msg), message: msg) -> Nil {
-  raw_send(pid, #(inbox.ref, message))
+pub fn send(pid: Pid, topic: Topic(msg), message: msg) -> Nil {
+  raw_send(pid, #(topic.ref, message))
   Nil
 }
 
 @external(erlang, "ektor_ffi", "receive")
-pub fn receive(inbox: Inbox(msg), within timeout: Int) -> Result(msg, Nil)
+pub fn receive(topic: Topic(msg), within timeout: Int) -> Result(msg, Nil)
 
-@external(erlang, "ektor_ffi", "new_handler_map")
-pub fn new_handler_map() -> HandlerMap(state)
+@external(erlang, "ektor_ffi", "new_topics_router")
+pub fn new_topics_router() -> TopicRouter(state)
 
 @external(erlang, "ektor_ffi", "insert_handler")
 pub fn insert_handler(
-  handlers: HandlerMap(state),
-  inbox: Inbox(msg),
+  router: TopicRouter(state),
+  topic: Topic(msg),
   handler: fn(msg, state) -> Next(state),
-) -> HandlerMap(state)
+) -> TopicRouter(state)
 
 @external(erlang, "ektor_ffi", "insert_anything_handler")
 pub fn insert_anything_handler(
-  handlers: HandlerMap(state),
+  router: TopicRouter(state),
   handler: fn(Dynamic, state) -> Next(state),
-) -> HandlerMap(state)
+) -> TopicRouter(state)
 
 pub fn handling_anything(
-  handlers: HandlerMap(state),
+  router: TopicRouter(state),
   handler: fn(Dynamic, state) -> Next(state),
-) -> HandlerMap(state) {
-  insert_anything_handler(handlers, handler)
+) -> TopicRouter(state) {
+  insert_anything_handler(router, handler)
 }
 
 pub fn handling(
-  handlers: HandlerMap(state),
-  inbox: Inbox(msg),
+  router: TopicRouter(state),
+  topic: Topic(msg),
   handler: fn(msg, state) -> Next(state),
-) -> HandlerMap(state) {
-  handlers |> insert_handler(inbox, handler)
+) -> TopicRouter(state) {
+  router |> insert_handler(topic, handler)
 }
 
-pub fn start(state: state, handler: HandlerMap(state)) -> Pid {
-  start_spec(Spec(init: fn() { Ready(state, handler) }))
+pub fn start(state: state, router: TopicRouter(state)) -> Pid {
+  start_spec(Spec(init: fn() { Ready(state, router) }))
 }
 
 pub fn start_spec(spec: Spec(state)) -> Pid {
@@ -125,8 +125,8 @@ fn spawn_link(a: fn() -> anything) -> Pid
 fn initialize_ektor(spec: Spec(state)) -> ExitReason {
   let init_result = spec.init()
   case init_result {
-    Ready(state, handlers) -> {
-      loop(state, handlers)
+    Ready(state, router) -> {
+      loop(state, router)
     }
     Failed(reason) -> {
       Abnormal(reason)
@@ -134,17 +134,17 @@ fn initialize_ektor(spec: Spec(state)) -> ExitReason {
   }
 }
 
-@external(erlang, "ektor_ffi", "receive_forever_with_handlers")
-fn receive_forever_with_handlers(
+@external(erlang, "ektor_ffi", "receive_forever_with_router")
+fn receive_forever_with_router(
   state: state,
-  handler: HandlerMap(state),
+  router: TopicRouter(state),
 ) -> Next(state)
 
-@external(erlang, "ektor_ffi", "merge_handler_maps")
-fn merge_handler_maps(
-  a: HandlerMap(state),
-  b: HandlerMap(state),
-) -> HandlerMap(state)
+@external(erlang, "ektor_ffi", "merge_topic_routers")
+fn merge_topic_routers(
+  a: TopicRouter(state),
+  b: TopicRouter(state),
+) -> TopicRouter(state)
 
 @external(erlang, "logger", "warning")
 fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
@@ -156,22 +156,22 @@ fn default_handler(msg: Dynamic, state: state) -> Next(state) {
   continue(state)
 }
 
-fn loop(state, handlers: HandlerMap(state)) -> ExitReason {
-  let catchall_handler =
-    new_handler_map()
+fn loop(state, router: TopicRouter(state)) -> ExitReason {
+  let catchall_router =
+    new_topics_router()
     |> handling_anything(default_handler)
-  let handlers = merge_handler_maps(catchall_handler, handlers)
-  let next = receive_forever_with_handlers(state, handlers)
+  let router = merge_topic_routers(catchall_router, router)
+  let next = receive_forever_with_router(state, router)
   case next {
     Stop(reason) -> reason
-    Continue(new_state, new_handlers) -> {
-      case new_handlers {
-        option.Some(new_handlers) -> {
-          let new_handlers = merge_handler_maps(handlers, new_handlers)
-          loop(new_state, new_handlers)
+    Continue(new_state, new_router) -> {
+      case new_router {
+        option.Some(new_router) -> {
+          let new_router = merge_topic_routers(router, new_router)
+          loop(new_state, new_router)
         }
         option.None -> {
-          loop(new_state, handlers)
+          loop(new_state, router)
         }
       }
     }
