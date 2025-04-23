@@ -34,7 +34,7 @@ pub type Spec(state) {
 }
 
 pub type Next(state) {
-  Continue(state: state, handler_map: Option(TopicRouter(state)))
+  Continue(state: state, topic_router: Option(TopicRouter(state)))
   Stop(ExitReason)
 }
 
@@ -42,12 +42,12 @@ pub fn continue(state: state) -> Next(state) {
   Continue(state, option.None)
 }
 
-pub fn with_handler_map(
+pub fn with_topic_router(
   next: Next(state),
-  handler_map: TopicRouter(state),
+  topic_router: TopicRouter(state),
 ) -> Next(state) {
   case next {
-    Continue(state, _) -> Continue(state, option.Some(handler_map))
+    Continue(state, _) -> Continue(state, option.Some(topic_router))
     _ -> next
   }
 }
@@ -67,8 +67,8 @@ pub fn send(pid: Pid, topic: Topic(msg), message: msg) -> Nil {
 @external(erlang, "ektor_ffi", "receive")
 pub fn receive(topic: Topic(msg), within timeout: Int) -> Result(msg, Nil)
 
-@external(erlang, "ektor_ffi", "new_topics_router")
-pub fn new_topics_router() -> TopicRouter(state)
+@external(erlang, "ektor_ffi", "new_topic_router")
+pub fn new_topic_router() -> TopicRouter(state)
 
 @external(erlang, "ektor_ffi", "insert_handler")
 pub fn insert_handler(
@@ -158,7 +158,7 @@ fn default_handler(msg: Dynamic, state: state) -> Next(state) {
 
 fn loop(state, router: TopicRouter(state)) -> ExitReason {
   let catchall_router =
-    new_topics_router()
+    new_topic_router()
     |> handling_anything(default_handler)
   let router = merge_topic_routers(catchall_router, router)
   let next = receive_forever_with_router(state, router)

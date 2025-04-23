@@ -1,19 +1,19 @@
 -module(ektor_ffi).
 
--export([new_topics_router/0, 'receive'/2, insert_handler/3, insert_anything_handler/2,
+-export([new_topic_router/0, 'receive'/2, insert_handler/3, insert_anything_handler/2,
          receive_forever_with_router/2, merge_topic_routers/2]).
 
-new_topics_router() ->
-    {topics_router, #{}}.
+new_topic_router() ->
+    {topic_router, #{}}.
 
-merge_topic_routers({topics_router, RouterA}, {topics_router, RouterB}) ->
-    {topics_router, maps:merge(RouterA, RouterB)}.
+merge_topic_routers({topic_router, RouterA}, {topic_router, RouterB}) ->
+    {topic_router, maps:merge(RouterA, RouterB)}.
 
-insert_anything_handler({topics_router, HandlerFns}, Fn) ->
-    {topics_router, HandlerFns#{anything => Fn}}.
+insert_anything_handler({topic_router, HandlerFns}, Fn) ->
+    {topic_router, HandlerFns#{anything => Fn}}.
 
-insert_handler({topics_router, HandlerFns}, {topic, Ref}, Fn) ->
-    {topics_router, HandlerFns#{Ref => Fn}}.
+insert_handler({topic_router, HandlerFns}, {topic, Ref}, Fn) ->
+    {topic_router, HandlerFns#{Ref => Fn}}.
 
 'receive'({topic, Ref}, Timeout) ->
     receive
@@ -27,7 +27,7 @@ receive_forever_with_router(State, TopicRouter) ->
     {ok, Next} = receive_with_router(State, TopicRouter, infinity),
     Next.
 
-receive_with_router(State, {topics_router, TopicRouter}, Timeout) ->
+receive_with_router(State, {topic_router, TopicRouter}, Timeout) ->
     AnythingHandler = maps:get(anything, TopicRouter, undefined),
     receive
         Msg when is_map_key(element(1, Msg), TopicRouter) ->
