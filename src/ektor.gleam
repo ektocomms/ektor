@@ -1,9 +1,20 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang.{type Reference}
 import gleam/erlang/charlist.{type Charlist}
-import gleam/erlang/process.{type ExitReason, type Pid}
 import gleam/option.{type Option}
 import gleam/string
+
+pub type Pid
+
+/// Get the `Pid` for the current process.
+@external(erlang, "erlang", "self")
+pub fn self() -> Pid
+
+pub type ExitReason {
+  Normal
+  Killed
+  Abnormal(reason: String)
+}
 
 type DoNotLeak
 
@@ -92,8 +103,24 @@ pub fn start(state: state, handler: HandlerMap(state)) -> Pid {
 }
 
 pub fn start_spec(spec: Spec(state)) -> Pid {
-  process.start(fn() { initialize_ektor(spec) }, linked: True)
+  process_start(fn() { initialize_ektor(spec) }, linked: True)
 }
+
+pub fn process_start(
+  running implementation: fn() -> anything,
+  linked link: Bool,
+) -> Pid {
+  case link {
+    True -> spawn_link(implementation)
+    False -> spawn(implementation)
+  }
+}
+
+@external(erlang, "erlang", "spawn")
+fn spawn(a: fn() -> anything) -> Pid
+
+@external(erlang, "erlang", "spawn_link")
+fn spawn_link(a: fn() -> anything) -> Pid
 
 fn initialize_ektor(spec: Spec(state)) -> ExitReason {
   let init_result = spec.init()
@@ -102,7 +129,7 @@ fn initialize_ektor(spec: Spec(state)) -> ExitReason {
       loop(state, handlers)
     }
     Failed(reason) -> {
-      process.Abnormal(reason)
+      Abnormal(reason)
     }
   }
 }

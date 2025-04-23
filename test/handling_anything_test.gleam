@@ -1,7 +1,6 @@
-import ektor.{type Inbox}
+import ektor.{type Inbox, type Pid}
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
-import gleam/erlang/process.{type Pid}
 import gleeunit/should
 
 pub type EktorMsg {
@@ -59,7 +58,7 @@ pub fn ektor_handling_anything_test() {
     |> ektor.handling(supervisor_msg_inbox, supervisor_msg_handler)
     |> ektor.handling_anything(anything_handler)
   let ekt_pid = ektor.start(Initial, handlers)
-  let my_pid = process.self()
+  let my_pid = ektor.self()
   let inbox = ektor.new_inbox()
   ektor.send(ekt_pid, supervisor_msg_inbox, ReplyTo(#(my_pid, inbox)))
   raw_send(ekt_pid, "Test String")

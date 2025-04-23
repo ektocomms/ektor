@@ -1,5 +1,4 @@
-import ektor.{type Inbox}
-import gleam/erlang/process.{type Pid}
+import ektor.{type Inbox, type Pid}
 import gleam/int
 import gleeunit
 import gleeunit/should
@@ -47,7 +46,7 @@ pub fn ektor_basic_usage_test() {
     |> ektor.handling(inbox_b, handler_b)
   let ekt_pid = ektor.start(State(a: 0, b: 0), handlers)
   ektor.send(ekt_pid, inbox_a, A(1))
-  let my_pid = process.self()
+  let my_pid = ektor.self()
   let inbox = ektor.new_inbox()
   ektor.send(ekt_pid, inbox_b, B(2, #(my_pid, inbox)))
   let msg = ektor.receive(inbox, within: 200)

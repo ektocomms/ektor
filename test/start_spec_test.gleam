@@ -1,5 +1,4 @@
 import ektor
-import gleam/erlang/process
 import gleeunit/should
 
 type Msg {
@@ -7,7 +6,7 @@ type Msg {
 }
 
 pub fn ektor_start_spec_test() {
-  let my_pid = process.self()
+  let my_pid = ektor.self()
   let my_inbox = ektor.new_inbox()
   let _ekt_pid =
     ektor.start_spec(

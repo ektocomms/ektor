@@ -7,8 +7,7 @@ Typed Messages between actors handling multiple types with less code.
 
 
 ```gleam
-import ektor.{type Inbox}
-import gleam/erlang/process.{type Pid}
+import ektor.{type Inbox, type Pid}
 import gleam/int
 import gleam/io
 
