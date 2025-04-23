@@ -1,4 +1,4 @@
-import ektor.{type Pid, type Topic}
+import ektor.{type Target}
 import gleam/int
 import gleeunit
 import gleeunit/should
@@ -12,7 +12,7 @@ type A {
 }
 
 type B {
-  B(b: Int, reply_to: #(Pid, Topic(Msg)))
+  B(b: Int, reply_to: Target(Msg))
 }
 
 type Msg {
@@ -28,10 +28,8 @@ fn handler_a(msg: A, state: State) {
 }
 
 fn handler_b(msg: B, state: State) {
-  let #(pid, topic) = msg.reply_to
   ektor.send(
-    pid,
-    topic,
+    msg.reply_to,
     Msg("Received " <> int.to_string(msg.b) <> " at handler_b"),
   )
   ektor.continue(State(..state, b: msg.b))
@@ -45,11 +43,10 @@ pub fn ektor_basic_usage_test() {
     |> ektor.handling(topic_a, handler_a)
     |> ektor.handling(topic_b, handler_b)
   let ekt_pid = ektor.start(State(a: 0, b: 0), topic_router)
-  ektor.send(ekt_pid, topic_a, A(1))
-  let my_pid = ektor.self()
-  let topic = ektor.new_topic()
-  ektor.send(ekt_pid, topic_b, B(2, #(my_pid, topic)))
-  let msg = ektor.receive(topic, within: 200)
+  ektor.send(ektor.Target(ekt_pid, topic_a), A(1))
+  let my_target = ektor.new_target()
+  ektor.send(ektor.Target(ekt_pid, topic_b), B(2, my_target))
+  let msg = ektor.receive(my_target.topic, within: 200)
   msg
   |> should.equal(Ok(Msg("Received 2 at handler_b")))
 }

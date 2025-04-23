@@ -13,6 +13,6 @@ fn handler(msg: A, state: State) {
 }
 
 pub fn start_single_test() {
-  let #(pid, topic) = ektor.start_single(State(a: 0, b: 0), handler)
-  ektor.send(pid, topic, A(1))
+  let target = ektor.start_single(State(a: 0, b: 0), handler)
+  ektor.send(target, A(1))
 }

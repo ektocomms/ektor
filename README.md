@@ -7,23 +7,28 @@ Typed Messages between actors handling multiple types with less code.
 
 
 ```gleam
-import ektor.{type Pid, type Topic}
+import ektor.{type Target}
 import gleam/int
-import gleam/io
+import gleeunit
+import gleeunit/should
+
+pub fn main() {
+  gleeunit.main()
+}
 
 type A {
   A(a: Int)
 }
 
 type B {
-  B(b: Int, reply_to: #(Pid, Topic(Msg)))
+  B(b: Int, reply_to: Target(Msg))
 }
 
 type Msg {
   Msg(msg: String)
 }
 
-type State {
+pub type State {
   State(a: Int, b: Int)
 }
 
@@ -32,16 +37,14 @@ fn handler_a(msg: A, state: State) {
 }
 
 fn handler_b(msg: B, state: State) {
-  let #(pid, topic) = msg.reply_to
   ektor.send(
-    pid,
-    topic,
+    msg.reply_to,
     Msg("Received " <> int.to_string(msg.b) <> " at handler_b"),
   )
   ektor.continue(State(..state, b: msg.b))
 }
 
-pub fn main() {
+pub fn ektor_basic_usage_test() {
   let topic_a = ektor.new_topic()
   let topic_b = ektor.new_topic()
   let topic_router =
@@ -49,12 +52,12 @@ pub fn main() {
     |> ektor.handling(topic_a, handler_a)
     |> ektor.handling(topic_b, handler_b)
   let ekt_pid = ektor.start(State(a: 0, b: 0), topic_router)
-  ektor.send(ekt_pid, topic_a, A(1))
-  let my_pid = ektor.self()
-  let topic = ektor.new_topic()
-  ektor.send(ekt_pid, topic_b, B(2, #(my_pid, topic)))
-  let assert Ok(Msg(msg)) = ektor.receive(topic, within: 200)
-  io.println(msg)
+  ektor.send(ektor.Target(ekt_pid, topic_a), A(1))
+  let my_target = ektor.new_target()
+  ektor.send(ektor.Target(ekt_pid, topic_b), B(2, my_target))
+  let msg = ektor.receive(my_target.topic, within: 200)
+  msg
+  |> should.equal(Ok(Msg("Received 2 at handler_b")))
 }
 ```
 
@@ -71,7 +74,8 @@ Soon or later you would find your self spending more time and line of codes to a
 
 With ektor we wanted to overcome this situation by enabling multi-type message handling with minimal effort.
 
-Instead of `Subject(type)`, we use `Topic(type)` which is not tied to a process `Pid` an so can be instantiated at the supervisor before spawning the child process.
+Instead of `Subject(type)`, we initially use `Topic(type)` which is not tied to a process `Pid` an so can be instantiated at the supervisor before spawning the child process.
+Later on we send messages to a given `Target(type)` which is built with the constructor `ektor.Target(pid, topic)`.
 Instead of a function to handle messages of a single type, in companion with a selector which maps multi-type messages to that single message type, we use a map of topics to handling functions called `TopicRouter(state)`. Each of them will instruct the actor (ektor) on how to process a message on that topic to produce the next state.
 
 Basic features have been implemented so far following the original implementation at `gleam_erlang/process` and `gleam_otp/actor`:

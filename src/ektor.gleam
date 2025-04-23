@@ -10,19 +10,29 @@ pub type Pid
 @external(erlang, "erlang", "self")
 pub fn self() -> Pid
 
+pub type Topic(msg) {
+  Topic(ref: Reference)
+}
+
+pub fn new_topic() {
+  Topic(ref: erlang.make_reference())
+}
+
+pub type Target(msg) {
+  Target(pid: Pid, topic: Topic(msg))
+}
+
+pub fn new_target() {
+  Target(self(), new_topic())
+}
+
 pub type ExitReason {
   Normal
   Killed
   Abnormal(reason: String)
 }
 
-type DoNotLeak
-
 pub type TopicRouter(state)
-
-pub type Topic(msg) {
-  Topic(ref: Reference)
-}
 
 pub type InitResult(state) {
   Ready(state: state, router: TopicRouter(state))
@@ -52,15 +62,13 @@ pub fn with_topic_router(
   }
 }
 
-pub fn new_topic() {
-  Topic(ref: erlang.make_reference())
-}
+type DoNotLeak
 
 @external(erlang, "erlang", "send")
 fn raw_send(a: Pid, b: message) -> DoNotLeak
 
-pub fn send(pid: Pid, topic: Topic(msg), message: msg) -> Nil {
-  raw_send(pid, #(topic.ref, message))
+pub fn send(target: Target(msg), message: msg) -> Nil {
+  raw_send(target.pid, #(target.topic.ref, message))
   Nil
 }
 
@@ -109,13 +117,13 @@ pub fn start_spec(spec: Spec(state)) -> Pid {
 pub fn start_single(
   state: state,
   handler: fn(msg, state) -> Next(state),
-) -> #(Pid, Topic(msg)) {
+) -> Target(msg) {
   let topic = new_topic()
   let router =
     new_topic_router()
     |> handling(topic, handler)
   let pid = start_spec(Spec(init: fn() { Ready(state, router) }))
-  #(pid, topic)
+  Target(pid, topic)
 }
 
 pub fn process_start(
