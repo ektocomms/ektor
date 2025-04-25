@@ -197,3 +197,30 @@ fn loop(state, router: TopicRouter(state)) -> ExitReason {
     }
   }
 }
+
+pub type CallError {
+  CallTimeout
+}
+
+pub fn try_call(
+  target: Target(req),
+  msg_factory: fn(Target(resp)) -> req,
+  within timeout: Int,
+) -> Result(resp, CallError) {
+  let resp_target = new_target()
+  send(target, msg_factory(resp_target))
+  let result = receive(resp_target.topic, within: timeout)
+  case result {
+    Error(Nil) -> Error(CallTimeout)
+    Ok(resp) -> Ok(resp)
+  }
+}
+
+pub fn call(
+  target: Target(resq),
+  msg_factory: fn(Target(resp)) -> resq,
+  within timeout: Int,
+) -> resp {
+  let assert Ok(resp) = try_call(target, msg_factory, timeout)
+  resp
+}
